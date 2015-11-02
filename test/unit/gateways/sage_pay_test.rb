@@ -194,6 +194,14 @@ class SagePayTest < Test::Unit::TestCase
     assert_equal '1', response.authorization
   end
 
+  def test_cv2_is_submitted_for_token_payment
+    stub_comms(@gateway, :ssl_request) do
+      @gateway.purchase(@amount, 'B590E6CC8', @options.merge({verification_value: 123}))
+    end.check_request do |method, endpoint, data, headers|
+      assert_match(/CV2=123/, data)
+    end.respond_with(successful_purchase_response)
+  end
+
   def test_successful_verify
     response = stub_comms do
       @gateway.verify(@credit_card, @options)
