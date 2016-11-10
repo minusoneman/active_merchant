@@ -369,6 +369,23 @@ class RemoteBraintreeBlueTest < Test::Unit::TestCase
     assert_success capture
   end
 
+  def test_authorize_and_capture_with_android_pay_card
+    credit_card = network_tokenization_credit_card('4111111111111111',
+      :payment_cryptogram => "EHuWW9PiBkWvqE5juRwDzAUFBAk=",
+      :month              => "01",
+      :year               => "2024",
+      :source             => :android_pay,
+      :transaction_id     => "123456789"
+    )
+
+    assert auth = @gateway.authorize(@amount, credit_card, @options)
+    assert_success auth
+    assert_equal '1000 Approved', auth.message
+    assert auth.authorization
+    assert capture = @gateway.capture(@amount, auth.authorization)
+    assert_success capture
+  end
+
   def test_authorize_and_void
     assert auth = @gateway.authorize(@amount, @credit_card, @options)
     assert_success auth
@@ -409,7 +426,6 @@ class RemoteBraintreeBlueTest < Test::Unit::TestCase
     assert_equal 'voided', void.params["braintree_transaction"]["status"]
     assert failed_void = @gateway.void(auth.authorization)
     assert_failure failed_void
-    assert failed_void.authorization.present?
     assert_equal 'Transaction can only be voided if status is authorized or submitted_for_settlement. (91504)', failed_void.message
     assert_equal({"processor_response_code"=>"91504"}, failed_void.params["braintree_transaction"])
   end
@@ -575,7 +591,6 @@ class RemoteBraintreeBlueTest < Test::Unit::TestCase
   def test_failed_credit
     assert response = @gateway.credit(@amount, credit_card('5105105105105101'), @options)
     assert_failure response
-    assert response.authorization.present?
     assert_equal 'Credit card number is invalid. (81715)', response.message, "You must get credits enabled in your Sandbox account for this to pass"
   end
 
@@ -594,7 +609,7 @@ class RemoteBraintreeBlueTest < Test::Unit::TestCase
   end
 
   def test_authorize_with_descriptor
-    assert auth = @gateway.authorize(@amount, @credit_card, descriptor_name: "company*theproduct", descriptor_phone: "1331131131")
+    assert auth = @gateway.authorize(@amount, @credit_card, descriptor_name: "company*theproduct", descriptor_phone: "1331131131", descriptor_url: "company.com")
     assert_success auth
   end
 
@@ -614,6 +629,14 @@ class RemoteBraintreeBlueTest < Test::Unit::TestCase
     assert_scrubbed(@credit_card.number, clean_transcript)
     assert_scrubbed(@credit_card.verification_value.to_s, clean_transcript)
   end
+
+  def test_verify_credentials
+    assert @gateway.verify_credentials
+
+    gateway = BraintreeGateway.new(merchant_id: "UNKNOWN", public_key: "UNKONWN", private_key: "UNKONWN")
+    assert !gateway.verify_credentials
+  end
+
 
   private
   def assert_avs(address1, zip, expected_avs_code)
