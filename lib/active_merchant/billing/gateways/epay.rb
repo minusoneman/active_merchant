@@ -136,6 +136,10 @@ module ActiveMerchant #:nodoc:
         post[:transaction] = identification
       end
 
+      def add_subscription(post, identification)
+        post[:subscriptionid] = identification
+      end
+
       def add_invoice(post, options)
         post[:orderid] = format_order_number(options[:order_id])
       end
@@ -151,7 +155,7 @@ module ActiveMerchant #:nodoc:
         if credit_card_or_reference.respond_to?(:number)
           add_creditcard(post, credit_card_or_reference)
         else
-          add_reference(post, credit_card_or_reference.to_s)
+          add_subscription(post, credit_card_or_reference.to_s)
         end
       end
 
